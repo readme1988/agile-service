@@ -47,7 +47,8 @@ public class IssueLabelServiceImpl implements IssueLabelService {
     public List<IssueLabelVO> listIssueLabel(Long projectId) {
         IssueLabelDTO issueLabelDTO = new IssueLabelDTO();
         issueLabelDTO.setProjectId(projectId);
-        return modelMapper.map(issueLabelMapper.select(issueLabelDTO), new TypeToken<List<IssueLabelVO>>(){}.getType());
+        return modelMapper.map(issueLabelMapper.select(issueLabelDTO), new TypeToken<List<IssueLabelVO>>() {
+        }.getType());
     }
 
     @Override

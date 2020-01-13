@@ -1,11 +1,15 @@
-import React, { Component } from 'react';
+import React, { Component, Fragment } from 'react';
 import { observer } from 'mobx-react';
 import {
-  Tooltip, Icon, 
+  Tooltip, Icon,
 } from 'choerodon-ui';
+import classnames from 'classnames';
+import { Button } from 'choerodon-ui/pro';
 import UserHead from '../../../../../../components/UserHead';
-import AssigneeModal from './AssigneeModal';
+import BacklogStore from '@/stores/project/backlog/BacklogStore';
 
+import AssigneeModal from './AssigneeModal';
+import './AssigneeInfo.less';
 
 @observer class AssigneeInfo extends Component {
   constructor(props) {
@@ -27,73 +31,102 @@ import AssigneeModal from './AssigneeModal';
     });
   };
 
+  handleSearchAssignee = (assigneeId) => {
+    const { data: { sprintId } } = this.props;
+    const filterSprintAssignId = BacklogStore.filterSprintAssign.get(sprintId);
+    if (filterSprintAssignId === assigneeId) {
+      BacklogStore.clearFilterSprintAssign(sprintId);
+    } else {
+      BacklogStore.setFilterSprintAssign(sprintId, assigneeId);
+    }
+  };
+
+  /**
+ * 清除经办人筛选 
+ */
+  handleClearAssignee = () => {
+    const { data: { sprintId } } = this.props;
+    BacklogStore.clearFilterSprintAssign(sprintId);
+  };
+
   render() {
     const { assigneeIssues, data } = this.props;
     const { expand } = this.state;
+    const filterSprintAssignId = BacklogStore.filterSprintAssign.get(data.sprintId);
     return (
-      <div className="c7n-backlog-sprintName">
-        {assigneeIssues ? assigneeIssues
-          .filter(assignee => assignee.assigneeId)
-          .map((existAssignee, index) => (
-            <Tooltip
-              key={`tooltip-${existAssignee.assigneeId}`}
-              placement="bottom"
-              title={(
-                <div>
-                  <p>{existAssignee.assigneeName}</p>
-                  <p>
-                    {'故事点: '}
-                    {existAssignee.totalStoryPoints || 0}
-                  </p>
-                  <p>
-                    {'剩余预估时间: '}
-                    {existAssignee.totalRemainingTime ? existAssignee.totalRemainingTime : '无'}
-                  </p>
-                  <p>
-                    {'问题: '}
-                    {existAssignee.issueCount}
-                  </p>
-                </div>
-              )}
-            >
-              <div style={{ display: 'none' }}>Magic</div>
-              <UserHead
-                tooltip={false}
-                hiddenText
-                size={24}
-                style={{
-                  marginBottom: 6,
-                }}
-                user={{
-                  id: existAssignee.assigneeId,
-                  loginName: existAssignee.assigneeLoginName,
-                  realName: existAssignee.assigneeRealName,
-                  name: existAssignee.assigneeName,
-                  avatar: existAssignee.imageUrl,
-                }}
-              />
-            </Tooltip>
-          )) : null}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
-          <Icon
-            style={{
-              // flex: 1,
-              cursor: 'pointer',
-              fontSize: 20,
-              marginLeft: 8,
-              display: assigneeIssues && assigneeIssues.length > 0 ? 'inline-block' : 'none',
-            }}
-            type="more_vert"
-            role="none"
-            onClick={this.expandMore}
-          />
+      <Fragment>
+        <div className="c7n-backlog-assignInfo">
+          <div className="c7n-backlog-assignInfo-left">
+            {assigneeIssues ? assigneeIssues
+              .filter(assignee => assignee.assigneeId)
+              .map(({
+                assigneeId,
+                assigneeName,
+                totalStoryPoints,
+                totalRemainingTime,
+                issueCount,
+                assigneeLoginName,
+                assigneeRealName,
+                imageUrl,
+              }) => (
+                <UserHead
+                  key={assigneeId}
+                  title={(
+                    <div>
+                      <p>{assigneeName}</p>
+                      <p>
+                        {'故事点: '}
+                        {totalStoryPoints || 0}
+                      </p>
+                      <p>
+                        {'剩余预估时间: '}
+                        {totalRemainingTime || '无'}
+                      </p>
+                      <p>
+                        {'问题: '}
+                        {issueCount}
+                      </p>
+                    </div>
+                    )}
+                  hiddenText
+                  className={classnames({
+                    'c7n-backlog-assignInfo-item': true,
+                    'c7n-backlog-assignInfo-item-active': filterSprintAssignId === assigneeId,
+                  })}
+                  onClick={() => this.handleSearchAssignee(assigneeId)}
+                  size={24}
+                  user={{
+                    id: assigneeId,
+                    loginName: assigneeLoginName,
+                    realName: assigneeRealName,
+                    name: assigneeName,
+                    avatar: imageUrl,
+                  }}
+                />
+              )) : null}
+          </div>
+          <div className="c7n-backlog-assignInfo-right">
+            <Icon
+              style={{
+                cursor: 'pointer',
+                fontSize: 20,
+                marginLeft: 8,
+                display: assigneeIssues && assigneeIssues.length > 0 ? 'inline-block' : 'none',
+              }}
+              type="more_vert"
+              role="none"
+              onClick={this.expandMore}
+            />
+
+            {filterSprintAssignId && <Button color="blue" onClick={this.handleClearAssignee}>清除筛选</Button>}
+          </div>
         </div>
         <AssigneeModal
           visible={expand}
           onCancel={this.closeMore}
           data={data}
         />
-      </div>
+      </Fragment>
     );
   }
 }

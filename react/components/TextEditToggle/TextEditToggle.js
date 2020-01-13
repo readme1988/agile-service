@@ -1,7 +1,7 @@
 /* eslint-disable react/no-find-dom-node, react/destructuring-assignment */
 import React, { Component, createRef } from 'react';
 import {
-  Form, Icon, Select, DatePicker, 
+  Form, Icon, Select, DatePicker,
 } from 'choerodon-ui';
 import { Choerodon } from '@choerodon/boot';
 import classNames from 'classnames';
@@ -324,7 +324,14 @@ class TextEditToggle extends Component {
           noButton,
         })}
         ref={this.Edit}
-        onClick={this.enterEditing}
+          // onClick={this.enterEditing}
+        onMouseDown={() => { this.timer = Date.now(); }}
+        onMouseUp={(e) => {
+          // console.log(Date.now() - this.timer);
+          if (Date.now() - this.timer <= 200) {
+            this.enterEditing(e);
+          }
+        }}
         role="none"
       >
         {this.renderTextChild(children)}

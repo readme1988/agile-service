@@ -185,8 +185,8 @@ const { confirm } = Modal;
           }}
         >
           <AssigneeInfo
-            data={data}
-            assigneeIssues={data.assigneeIssues}
+            data={data}  
+            assigneeIssues={data.assigneeIssues}       
           />
           <StoryPointContainer
             statusCode={data.statusCode}

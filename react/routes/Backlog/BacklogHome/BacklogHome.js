@@ -1,25 +1,25 @@
-/* eslint-disable react/no-unused-state */
 import React, { Component } from 'react';
 import { observer, inject } from 'mobx-react';
-import { Link } from 'react-router-dom';
 import {
   TabPage as Page, Header, stores, Breadcrumb, Content,
 } from '@choerodon/boot';
 import { DragDropContext } from 'react-beautiful-dnd';
 import {
-  Button, Spin, Checkbox, Icon,
+  Button, Spin, Checkbox, Icon, Breadcrumb as Bread,
 } from 'choerodon-ui';
 import { Modal } from 'choerodon-ui/pro';
 import Version from '../components/VersionComponent/Version';
 import Epic from '../components/EpicComponent/Epic';
+import Feature from '../components/FeatureComponent/Feature';
 import IssueDetail from '../components/IssueDetailComponent/IssueDetail';
 import CreateIssue from '../../../components/CreateIssue';
 import './BacklogHome.less';
 import SprintItem from '../components/SprintComponent/SprintItem';
 import CreateSprint from '../components/create-sprint';
 import Injecter from '../../../components/Injecter';
+import IsInProgramStore from '../../../stores/common/program/IsInProgramStore';
+import { getFeaturesInProject } from '../../../api/FeatureApi';
 
-const { AppState } = stores;
 const createSprintKey = Modal.key();
 @inject('HeaderStore')
 @observer
@@ -27,12 +27,8 @@ class BacklogHome extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      spinIf: false,
-      versionVisible: false,
-      epicVisible: false,
       display: false,
-      first: true,
-    };  
+    };
   }
 
   componentDidMount() {
@@ -55,9 +51,6 @@ class BacklogHome extends Component {
     BacklogStore.axiosGetDefaultPriority();
     Promise.all([BacklogStore.axiosGetQuickSearchList(), BacklogStore.axiosGetIssueTypes(), BacklogStore.axiosGetDefaultPriority(), BacklogStore.axiosGetSprint()]).then(([quickSearch, issueTypes, priorityArr, backlogData]) => {
       BacklogStore.initBacklogData(quickSearch, issueTypes, priorityArr, backlogData);
-      this.setState({
-        first: false,
-      });
     });
   };
 
@@ -91,6 +84,18 @@ class BacklogHome extends Component {
     });
   };
 
+  /**
+   * 加载特性
+   */
+  loadFeature = () => {
+    const { BacklogStore } = this.props;
+
+    getFeaturesInProject().then((data) => {
+      BacklogStore.setFeatureData(data);
+    }).catch(() => {
+    });
+  };
+
   paramConverter = (url) => {
     const reg = /[^?&]([^=&#]+)=([^&#]*)/g;
     const retObj = {};
@@ -117,14 +122,9 @@ class BacklogHome extends Component {
       this.loadVersion();
     } else if (BacklogStore.getCurrentVisible === 'epic') {
       this.loadEpic();
+    } else if (BacklogStore.getCurrentVisible === 'feature') {
+      this.loadFeature();
     }
-  };
-
-  /**
-   * 加载快速搜索
-   */
-  loadQuickFilter = () => {
-
   };
 
   /**
@@ -147,22 +147,6 @@ class BacklogHome extends Component {
     });
   };
 
-  resetSprintChose = () => {
-    this.resetMuilterChose();
-  };
-
-  /**
-   * issue详情回退关闭详情侧边栏
-   */
-  resetMuilterChose = () => {
-    this.setState({
-      selected: {
-        droppableId: '',
-        issueIds: [],
-      },
-    });
-  };
-
   onQuickSearchChange = (onlyMeChecked, onlyStoryChecked, moreChecked) => {
     const { BacklogStore } = this.props;
     BacklogStore.setQuickFilters(onlyMeChecked, onlyStoryChecked, moreChecked);
@@ -172,20 +156,7 @@ class BacklogHome extends Component {
       }).catch((error) => {
       });
   }
-
-  onAssigneeChange = (data) => {
-    const { BacklogStore } = this.props;
-    BacklogStore.setAssigneeFilterIds(data);
-    BacklogStore.axiosGetSprint()
-      .then((res) => {
-        BacklogStore.setSprintData(res);
-        this.setState({
-          spinIf: false,
-        });
-      }).catch((error) => {
-      });
-  };
-
+  
   handleClickCBtn = () => {
     const { BacklogStore } = this.props;
     BacklogStore.setNewIssueVisible(true);
@@ -207,6 +178,9 @@ class BacklogHome extends Component {
       BacklogStore.toggleVisible(null);
     } else {
       BacklogStore.toggleVisible(type);
+      if (type === 'feature') {
+        BacklogStore.clearMultiSelected();
+      }
     }
   };
 
@@ -220,15 +194,37 @@ class BacklogHome extends Component {
     const { BacklogStore } = this.props;
     const arr = BacklogStore.getSprintData;
     const { display } = this.state;
-    const {
-      name, type, id, organizationId: orgId,
-    } = AppState.currentMenuType;
+    const { isInProgram } = IsInProgramStore;    
     return (
       <Page
         service={[
-          // 'agile-service.product-version.createVersion',
           'agile-service.issue.deleteIssue',
           'agile-service.sprint.queryByProjectId',
+          'agile-service.issue.listFeature',
+          'agile-service.product-version.queryVersionByProjectId',
+          'agile-service.sprint.queryByProjectId',
+          'agile-service.priority.queryDefaultByOrganizationId',
+          'agile-service.scheme.queryIssueTypesWithStateMachineIdByProjectId',
+          'agile-service.quick-filter.listByProjectId',
+          'base-service.organization-project.getGroupInfoByEnableProject',
+          'agile-service.issue.createIssue',
+          'agile-service.field-value.queryPageFieldViewList',
+          'agile-service.product-version.queryNameByOptions',
+          'agile-service.issue-component.queryComponentById',
+          'agile-service.scheme.queryByOrganizationIdList',
+          'agile-service.sprint.queryNameByOptions',
+          'agile-service.issue-label.listIssueLabel',
+          'base-service.organization.pagingQueryUsersOnOrganization',
+          'agile-service.issue.listEpicSelectData',
+          'agile-service.sprint.queryNameByOptions',
+          'agile-service.issue-link-type.listIssueLinkType',
+          'agile-service.issue.queryIssueByOptionForAgile',
+          'agile-service.sprint.queryCompleteMessageBySprintId',
+          'agile-service.sprint.completeSprint',
+          'base-service.time-zone-work-calendar-project.queryTimeZoneWorkCalendarDetail',
+          'agile-service.sprint.querySprintById',
+          'agile-service.sprint.startSprint',
+          'agile-service.product-version.updateVersion',
         ]}
         className="c7n-backlog-page"
       >
@@ -241,22 +237,13 @@ class BacklogHome extends Component {
             <Icon type="playlist_add icon" />
             <span>创建问题</span>
           </Button>
-          <Button className="leftBtn" functyp="flat" onClick={this.handleCreateSprint}>
-            <Icon type="playlist_add icon" />
-            创建冲刺
-          </Button>
-          {/* <Button
-            className="leftBtn2"
-            functyp="flat"
-            onClick={() => {
-              this.refresh();
-              this.loadQuickFilter();
-            }}
-          >
-            <Icon type="refresh" />
-            {'刷新'}
-          </Button> */}
-          {false && arr.length && arr.length > 1
+          {!isInProgram && (
+            <Button className="leftBtn" functyp="flat" onClick={this.handleCreateSprint}>
+              <Icon type="playlist_add icon" />
+              创建冲刺
+            </Button>
+          )}
+          {isInProgram && arr.length && arr.length > 1
             ? (
               <Checkbox
                 className="primary"
@@ -267,17 +254,6 @@ class BacklogHome extends Component {
               </Checkbox>
             ) : ''
           }
-          {/* <div style={{
-            height: '50%', width: 1, background: 'rgba(0,0,0,0.12', margin: '0 30px',
-          }}
-          />
-          <QuickSearch
-            hideQuickSearch={BacklogStore.getCurrentVisible === 'feature'}
-            onQuickSearchChange={this.onQuickSearchChange}
-            resetFilter={BacklogStore.getQuickSearchClean}
-            onAssigneeChange={this.onAssigneeChange}
-          /> */}
-          {/* <ClearFilter /> */}
         </Header>
         <Breadcrumb />
         {/* 盖住tab下面的边框 */}
@@ -311,17 +287,32 @@ class BacklogHome extends Component {
               >
                 版本
               </p>
-              <p
-                style={{
-                  marginTop: 12,
-                }}
-                role="none"
-                onClick={() => {
-                  this.toggleCurrentVisible('epic');
-                }}
-              >
-                史诗
-              </p>
+              {!isInProgram && (
+                <p
+                  style={{
+                    marginTop: 12,
+                  }}
+                  role="none"
+                  onClick={() => {
+                    this.toggleCurrentVisible('epic');
+                  }}
+                >
+                  史诗
+                </p>
+              )}
+              {isInProgram && (
+                <p
+                  style={{
+                    marginTop: 12,
+                  }}
+                  role="none"
+                  onClick={() => {
+                    this.toggleCurrentVisible('feature');
+                  }}
+                >
+                  特性
+                </p>
+              )}
             </div>
             <Version
               store={BacklogStore}
@@ -331,8 +322,18 @@ class BacklogHome extends Component {
                 this.IssueDetail.refreshIssueDetail();
               }}
             />
-            <Epic
+            {!isInProgram && (
+              <Epic
+                refresh={this.refresh}
+                visible={BacklogStore.getCurrentVisible}
+                issueRefresh={() => {
+                  this.IssueDetail.refreshIssueDetail();
+                }}
+              />
+            )}
+            <Feature
               refresh={this.refresh}
+              isInProgram={isInProgram}
               visible={BacklogStore.getCurrentVisible}
               issueRefresh={() => {
                 this.IssueDetail.refreshIssueDetail();
@@ -379,7 +380,8 @@ class BacklogHome extends Component {
                     }
                   }}
                   onDragStart={(result) => {
-                    const { source } = result;
+                    // console.log('onDragStart', result);
+                    const { source, draggableId } = result;
                     const { droppableId: sourceId, index: sourceIndex } = source;
                     const item = BacklogStore.getIssueMap.get(sourceId)[sourceIndex];
                     BacklogStore.setIsDragging(item.issueId);
@@ -387,10 +389,10 @@ class BacklogHome extends Component {
                   }}
                 >
                   <SprintItem
-                    first={this.state.first}
                     display={display}
+                    isInProgram={isInProgram}
                     epicVisible={BacklogStore.getEpicVisible}
-                    versionVisible={BacklogStore.getVersionVisible}
+                    versionVisible={BacklogStore.getVersionVisible}                  
                     onRef={(ref) => {
                       this.sprintItemRef = ref;
                     }}
@@ -418,8 +420,7 @@ class BacklogHome extends Component {
               refresh={() => this.refresh(false)}
               onRef={(ref) => {
                 this.IssueDetail = ref;
-              }}
-              cancelCallback={this.resetSprintChose}
+              }}       
             />
           </div>
         </Content>

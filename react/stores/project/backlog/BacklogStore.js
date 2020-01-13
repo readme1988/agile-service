@@ -4,6 +4,7 @@ import {
 } from 'mobx';
 import { sortBy } from 'lodash';
 import { store, stores } from '@choerodon/boot';
+import { getFeaturesInProject } from '../../../api/FeatureApi';
 import { sort } from '../../../api/StoryMapApi';
 import { getProjectId } from '../../../common/utils';
 
@@ -11,88 +12,6 @@ const { AppState } = stores;
 
 @store('BacklogStore')
 class BacklogStore {
-  // issue
-  @observable issue = {};
-
-  @action setIssue(data) {
-    this.issue = data;
-  }
-
-  @computed get getIssue() {
-    return this.issue;
-  }
-
-  // fields
-  @observable fields = [];
-
-  @action setIssueFields(issue, fields) {
-    this.fields = fields;
-    this.issue = issue;
-  }
-
-  @computed get getFields() {
-    return this.fields;
-  }
-
-  // issue attribute
-  @observable doc = {};
-
-  @observable workLogs = [];
-
-  @observable dataLogs = [];
-
-  @observable linkIssues = [];
-
-  @observable branches = {};
-
-  @action setDoc(data) {
-    this.doc = data;
-  }
-
-  @computed get getDoc() {
-    return this.doc;
-  }
-
-  @action setWorkLogs(data) {
-    this.workLogs = data;
-  }
-
-  @computed get getWorkLogs() {
-    return this.workLogs.slice();
-  }
-
-  @action setDataLogs(data) {
-    this.dataLogs = data;
-  }
-
-  @computed get getDataLogs() {
-    return this.dataLogs;
-  }
-
-  @action setLinkIssues(data) {
-    this.linkIssues = data;
-  }
-
-  @computed get getLinkIssues() {
-    return this.linkIssues;
-  }
-
-  @action setBranches(data) {
-    this.branches = data;
-  }
-
-  @computed get getBranches() {
-    return this.branches;
-  }
-
-  @action initIssueAttribute(doc, workLogs, dataLogs, linkIssues, branches) {
-    this.doc = doc;
-    this.workLogs = workLogs;
-    this.dataLogs = dataLogs;
-    this.linkIssues = linkIssues;
-    this.branches = branches;
-  }
-
   @observable createdSprint = '';
 
   @observable hasActiveSprint = false;
@@ -110,8 +29,6 @@ class BacklogStore {
   @observable epicList = [];
 
   @observable featureList = [];
-
-  @observable epicMap = observable.map();
 
   @observable selectedIssueId = [];
 
@@ -135,7 +52,7 @@ class BacklogStore {
 
   @observable whichVisible = '';
 
-  @observable sprintData = {};
+  @observable sprintData = [];
 
   @observable versionData = [];
 
@@ -192,6 +109,7 @@ class BacklogStore {
   @observable cleanQuickSearch = false;
 
   @observable newIssueVisible = false;
+
 
   @computed get getNewIssueVisible() {
     return this.newIssueVisible;
@@ -274,18 +192,6 @@ class BacklogStore {
 
   @computed get getAssigneeProps() {
     return this.assigneeProps;
-  }
-
-  @action hideQuickSearch() {
-    this.showRealQuickSearch = false;
-  }
-
-  @action showQuickSearch() {
-    this.showRealQuickSearch = true;
-  }
-
-  @computed get getShowRealQuickSearch() {
-    return this.showRealQuickSearch;
   }
 
   @action setAssigneeProps(data) {
@@ -429,7 +335,7 @@ class BacklogStore {
   }
 
   axiosUpdateIssuesToFeature(featureId, ids) {
-    return axios.post(`/agile/v1/projects/${AppState.currentMenuType.id}/issues/to_feature/${featureId}`, ids);
+    return axios.post(`/agile-pro/v1/projects/${AppState.currentMenuType.id}/issues/to_feature/${featureId}`, ids);
   }
 
   @computed get getIsLeaveSprint() {
@@ -553,8 +459,19 @@ class BacklogStore {
       this.filterSelected = true;
     } else if (!this.Judge || (!this.Judge.onlyMeChecked && !this.Judge.moreChecked.length && (!this.Judge.onlyStoryChecked || this.whichVisible === 'feature'))) {
       this.filterSelected = false;
-    }    
+    }
     this.assigneeFilterIds = data;
+  }
+
+  // 过滤选中冲刺中的经办人
+  @observable filterSprintAssign = observable.map();
+
+  @action setFilterSprintAssign(sprintId, assigneeId) {
+    this.filterSprintAssign.set(sprintId, assigneeId);
+  }
+
+  @action clearFilterSprintAssign(sprintId) {
+    this.filterSprintAssign.delete(sprintId);
   }
 
   axiosGetSprint = () => {
@@ -665,7 +582,17 @@ class BacklogStore {
   }
 
   @computed get getSprintData() {
-    return this.sprintData;
+    return this.sprintData.map((sprint) => {
+      const filterAssignId = this.filterSprintAssign.get(sprint.sprintId);
+      if (filterAssignId) {
+        return {
+          ...sprint,
+          issueSearchVOList: sprint.issueSearchVOList.filter(issue => issue.assigneeId === filterAssignId),
+        };
+      } else {
+        return sprint;
+      }
+    });
   }
 
   @action toggleVisible(data) {
@@ -762,12 +689,22 @@ class BacklogStore {
     this.whichVisible = null;
     this.assigneeFilterIds = [];
     this.multiSelected = observable.map();
-    this.sprintData = {};
+    this.sprintData = [];
     this.clickIssueDetail = {};
   }
 
   @computed get getIssueMap() {
-    return this.issueMap;
+    const that = this;
+    return {
+      get(sprintId) {
+        const filterAssignId = that.filterSprintAssign.get(Number(sprintId));
+        if (filterAssignId) {
+          return that.issueMap.get(sprintId) ? that.issueMap.get(sprintId).filter(issue => issue.assigneeId === filterAssignId) : [];
+        } else {
+          return that.issueMap.get(sprintId);
+        }
+      },
+    };
   }
 
   getModifiedArr = (dragItem, type) => {
@@ -892,7 +829,7 @@ class BacklogStore {
       objectVersionNumber: epicRankObjectVersionNumber, // 乐观锁     
       issueId,
       type: 'epic',
-      before,     
+      before,
       referenceIssueId,
     };
     sort(sortVO).then(
@@ -904,6 +841,35 @@ class BacklogStore {
         } else {
           this.epicList.splice(destinationIndex, 1);
           this.epicList.splice(sourceIndex, 0, movedItem);
+        }
+      }),
+    );
+  }
+
+  @action moveFeature(sourceIndex, destinationIndex) {
+    const movedItem = this.featureList[sourceIndex];
+    const { issueId, featureRankObjectVersionNumber } = movedItem;
+    this.featureList.splice(sourceIndex, 1);
+    this.featureList.splice(destinationIndex, 0, movedItem);
+    const before = destinationIndex < this.featureList.length - 1;
+    const referenceIssueId = before ? this.featureList[destinationIndex + 1].issueId : this.featureList[destinationIndex - 1].issueId;
+    const sortVO = {
+      projectId: getProjectId(),
+      objectVersionNumber: featureRankObjectVersionNumber, // 乐观锁     
+      issueId,
+      type: 'feature',
+      before,
+      referenceIssueId,
+    };
+    sort(sortVO).then(
+      action('fetchSuccess', (res) => {
+        if (!res.message) {
+          getFeaturesInProject().then((data) => {
+            this.setFeatureData(data);
+          });
+        } else {
+          this.featureList.splice(destinationIndex, 1);
+          this.featureList.splice(sourceIndex, 0, movedItem);
         }
       }),
     );
@@ -1008,7 +974,7 @@ class BacklogStore {
       this.filter = { advancedSearchArgs: { onlyStory: 'true' } };
     } else {
       this.filter = { advancedSearchArgs: {} };
-    }   
+    }
     this.versionFilter = 'all';
     this.epicFilter = 'all';
     this.quickFilters = [];
@@ -1034,7 +1000,7 @@ class BacklogStore {
     }));
   }
 
-  @action setQuickFilters(onlyMeChecked, onlyStoryChecked, moreChecked = []) {   
+  @action setQuickFilters(onlyMeChecked, onlyStoryChecked, moreChecked = []) {
     this.spinIf = true;
     this.Judge = {
       onlyMeChecked, onlyStoryChecked, moreChecked,
@@ -1046,10 +1012,10 @@ class BacklogStore {
       delete this.filter.advancedSearchArgs.ownIssue;
     }
     if (onlyStoryChecked) {
-      this.filter.advancedSearchArgs.onlyStory = 'true';      
+      this.filter.advancedSearchArgs.onlyStory = 'true';
       if (this.whichVisible !== 'feature') {
         this.filterSelected = true;
-      }     
+      }
     } else {
       delete this.filter.advancedSearchArgs.onlyStory;
     }

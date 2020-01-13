@@ -37,4 +37,5 @@ public interface IssueLabelService {
      * @return int
      */
     int labelGarbageCollection(Long projectId);
+
 }

@@ -521,9 +521,14 @@ class ScrumBoardStore {
   @computed get getClickIssueDetail() {
     return this.clickIssueDetail;
   }
-
-  @action resetCurrentClick(parentIssueId) {
-    if (this.currentClickTarget) {
+  
+  /**
+   * 
+   * @param {*} parentIssueId 
+   * @param {*} isSkipIssue  是否为跳转问题 
+   */
+  @action resetCurrentClick(parentIssueId, isSkipIssue = false) {
+    if (this.currentClickTarget && !isSkipIssue) {
       this.currentClickTarget.style.backgroundColor = '#fff';
     }
     this.currentClickTarget = null;
@@ -900,6 +905,14 @@ class ScrumBoardStore {
   checkBoardNameRepeat = (proId, name) => axios.get(
     `/agile/v1/projects/${proId}/board/check_name?boardName=${name}`,
   );
+
+  // @action async scrumBoardInit(AppState, url) {
+  //   try {
+  //     const boardData = await this.axiosGetBoardList;
+  //   } catch (e) {
+  //     console.log(e);
+  //   }
+  // };
 
   @action setSpinIf(data) {
     // this.currentSprintExist = false;

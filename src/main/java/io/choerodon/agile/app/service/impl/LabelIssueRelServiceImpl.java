@@ -5,6 +5,7 @@ import io.choerodon.agile.app.service.LabelIssueRelService;
 import io.choerodon.agile.infra.annotation.DataLog;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.agile.infra.mapper.LabelIssueRelMapper;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -22,6 +23,9 @@ public class LabelIssueRelServiceImpl implements LabelIssueRelService {
 
     @Autowired
     private LabelIssueRelMapper labelIssueRelMapper;
+
+    @Autowired
+    private ModelMapper modelMapper;
 
     @Override
     @DataLog(type = "labelCreate")
@@ -55,5 +59,4 @@ public class LabelIssueRelServiceImpl implements LabelIssueRelService {
     public int delete(LabelIssueRelDTO labelIssueRelDTO) {
         return labelIssueRelMapper.delete(labelIssueRelDTO);
     }
-
 }

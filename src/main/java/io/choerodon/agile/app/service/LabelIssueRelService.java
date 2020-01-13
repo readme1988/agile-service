@@ -42,4 +42,5 @@ public interface LabelIssueRelService {
      * @return int
      */
     int delete(LabelIssueRelDTO labelIssueRelDTO);
+
 }

@@ -2,8 +2,8 @@ package io.choerodon.agile.api.controller.v1;
 
 import io.choerodon.agile.api.vo.ColumnSortVO;
 import io.choerodon.agile.api.vo.ColumnWithMaxMinNumVO;
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.agile.api.vo.BoardColumnVO;
 import io.choerodon.agile.app.service.BoardColumnService;
@@ -129,5 +129,6 @@ public class BoardColumnController {
                 .map(result -> new ResponseEntity<>(result, HttpStatus.CREATED))
                 .orElseThrow(() -> new CommonException("error.MaxAndMinNum.update"));
     }
+
 
 }
